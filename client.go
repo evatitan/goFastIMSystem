@@ -3,7 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"net"
+	"os"
 	"strconv"
 )
 
@@ -44,6 +46,12 @@ func init() {
 	flag.IntVar(&serverPort, "port", 8888, "server port by default is 8888")
 }
 
+// deal server response
+func (client *Client) DealResponse() {
+	// if client.conn has data, copy to stdout to output
+	io.Copy(os.Stdout, client.conn)
+}
+
 // client menu
 func (client *Client) menu() bool {
 	fmt.Println("1. group message")
@@ -61,22 +69,66 @@ func (client *Client) menu() bool {
 	}
 }
 
+func (client *Client) PublicChat() {
+	// ask user to input something
+	var chatMsg string
+
+	fmt.Println("enter something o exit")
+	fmt.Scanln(&chatMsg)
+
+	for chatMsg != "exit" {
+		// send to the server when the msg is not empty msg
+		if len(chatMsg) != 0 {
+			sendMsg := chatMsg + "\n"
+			_, err := client.conn.Write([]byte(sendMsg))
+			if err != nil {
+				fmt.Println("conn write err:", err)
+				break
+			}
+		}
+		chatMsg = ""
+		fmt.Println("enter something o exit")
+		fmt.Scanln(&chatMsg)
+	}
+}
+
+func (client *Client) UpdateName() bool {
+	fmt.Println("Please enter your new name")
+
+	fmt.Scanln(&client.Name)
+	sendMsg := "rename|" + client.Name + "\n"
+	_, err := client.conn.Write([]byte(sendMsg))
+	if err != nil {
+		fmt.Println("conn write err: ", err)
+		return false
+	}
+	return true
+}
+
 func (client *Client) Run() {
-	for client.flag != 0 {
+	for {
 		for client.menu() != true {
 			fmt.Println("please entre a valid number")
 		}
-	}
-	switch client.flag {
-	case 1:
-		fmt.Println("group message selected")
-		break
-	case 2:
-		fmt.Println("private message selected")
-		break
-	case 3:
-		fmt.Println("rename selected")
-		break
+
+		switch client.flag {
+		case 1:
+			// fmt.Println("group message selected")
+			client.PublicChat()
+			break
+		case 2:
+			fmt.Println("private message selected")
+			break
+		case 3:
+			// fmt.Println("rename selected")
+			client.UpdateName()
+			break
+		case 0:
+			fmt.Println("Exiting...")
+			return
+		default:
+			fmt.Println("Invalid option. Please try again.")
+		}
 	}
 }
 
@@ -89,6 +141,9 @@ func main() {
 		return
 	}
 	fmt.Println("client connect to server success")
+
+	// Start listening for server responses in a separate goroutine
+	go client.DealResponse()
 
 	// Run the client menu and handle user input
 	client.Run()
