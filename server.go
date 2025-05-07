@@ -7,9 +7,8 @@ import (
 )
 
 type Server struct {
-	Ip   string
-	Port int
-	// online user map
+	Ip        string
+	Port      int
 	OnlineMap map[string]*User
 	// In Go, maps are NOT concurrency-safe. If two or more goroutines access them simultaneously (read/write), the program will fail with a panic.	mapLock   sync.RWMutex
 	mapLock sync.RWMutex
@@ -17,7 +16,6 @@ type Server struct {
 	Message chan string
 }
 
-// NewServer creates a new server instance with the given IP and port.
 func NewServer(ip string, port int) *Server {
 	server := &Server{
 		Ip:        ip,
@@ -32,7 +30,7 @@ func NewServer(ip string, port int) *Server {
 func (this *Server) MonitorMessage() {
 	for {
 		msg := <-this.Message
-		// send message to all users
+		// send message to all users go routine
 		this.mapLock.Lock()
 		for _, client := range this.OnlineMap {
 			client.C <- msg
@@ -42,26 +40,14 @@ func (this *Server) MonitorMessage() {
 }
 
 func (this *Server) Broadcast(user *User, msg string) {
-	// send message to all users
 	sendMsg := "[" + user.Addr + "]" + ", " + user.Name + ":" + msg
-
 	this.Message <- sendMsg
 }
 
 func (this *Server) handler(conn net.Conn) {
-	// handle connection
-	// fmt.Println("connection accepted")
 
-	// create a new user
-	user := NewUser(conn)
-
-	// add user in online map when get connection
-	this.mapLock.Lock()
-	this.OnlineMap[user.Name] = user
-	this.mapLock.Unlock()
-
-	// publish this "online" message to all users
-	this.Broadcast(user, "online")
+	user := NewUser(conn, this)
+	user.Online()
 
 	// listen and read for user message
 	go func() {
@@ -70,7 +56,7 @@ func (this *Server) handler(conn net.Conn) {
 		for {
 			n, err := conn.Read(buf)
 			if n == 0 {
-				this.Broadcast(user, "offline")
+				user.Offline()
 				return
 			}
 			if err != nil && err.Error() != "EOF" {
@@ -80,17 +66,16 @@ func (this *Server) handler(conn net.Conn) {
 			// get message(remove \n)
 			// buf[:n] is a slice of the buffer with length n
 			msg := string(buf[:n-1])
-			// send message to all users
-			this.Broadcast(user, msg)
+			// send users message to all users
+			user.DoMessage(msg)
 		}
 	}()
 	//block this goroutine
 	select {}
-
 }
 
 func (this *Server) Start() {
-	// socket listen ,
+	// socket listen
 	// tcp:Transmission Control Protocol(HTTP web, SSH etc) / UDP: User Datagram Protocol(video, voice, streaming etc)
 	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", this.Ip, this.Port))
 	if err != nil {
