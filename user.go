@@ -53,12 +53,28 @@ func (this *User) Offline() {
 	this.Server.Broadcast(this, "offline")
 }
 
+// sendMsg sends a message to this user pc
+
+func (this *User) SendMsg(msg string) {
+	this.Conn.Write([]byte(msg + "\n"))
+
+}
+
 // sendMsg to the others users
 func (this *User) DoMessage(msg string) {
-	// send message to all users
-	sendMsg := "[" + this.Addr + "]" + "," + this.Name + ":" + msg
-	this.Server.Message <- sendMsg
-	this.Server.Broadcast(this, msg)
+	// search all online users
+	if msg == "who" {
+		this.Server.mapLock.Lock()
+		for _, user := range this.Server.OnlineMap {
+			onlineMsg := "[" + user.Addr + "]" + "," + user.Name + ":" + msg
+			this.SendMsg(onlineMsg)
+		}
+		this.Server.mapLock.Unlock()
+	} else {
+		// send message to all users
+		this.Server.Broadcast(this, msg)
+	}
+
 }
 
 // ListenMessage listens for messages on the user's channel and sends them to the client.
