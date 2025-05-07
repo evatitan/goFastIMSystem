@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"net"
+	"runtime"
 	"sync"
+	"time"
 )
 
 type Server struct {
@@ -48,6 +50,8 @@ func (this *Server) handler(conn net.Conn) {
 
 	user := NewUser(conn, this)
 	user.Online()
+	// monitor if user is live
+	isLive := make(chan bool)
 
 	// listen and read for user message
 	go func() {
@@ -68,10 +72,30 @@ func (this *Server) handler(conn net.Conn) {
 			msg := string(buf[:n-1])
 			// send users message to all users
 			user.DoMessage(msg)
+			isLive <- true
 		}
 	}()
-	//block this goroutine
-	select {}
+
+	//block this goroutine, because there is no ant case to exit.
+
+	for {
+		select {
+		case <-isLive:
+			// do nothing for enter the second case to active time after
+
+		case <-time.After(time.Second * 10):
+			// clear the user resources
+			user.SendMsg("You are timeout due to inactivity for long time")
+			close(user.C)
+
+			// close the connection
+			conn.Close()
+
+			runtime.Goexit()
+
+		}
+	}
+
 }
 
 func (this *Server) Start() {
