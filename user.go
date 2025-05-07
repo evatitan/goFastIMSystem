@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"strings"
 )
@@ -59,8 +60,10 @@ func (this *User) Offline() {
 // sendMsg sends a message to this user pc
 
 func (this *User) SendMsg(msg string) {
-	this.Conn.Write([]byte(msg + "\n"))
-
+	_, err := this.Conn.Write([]byte(msg + "\n"))
+	if err != nil {
+		fmt.Println("Error sending message to", this.Name, ":", err)
+	}
 }
 
 // sendMsg to the others users
@@ -89,11 +92,42 @@ func (this *User) DoMessage(msg string) {
 			    "Bob":   &User{Name: "Bob", Addr: "127.0.0.2"},
 			/ }*/
 			this.Server.OnlineMap[newName] = this
-			// update the valor in the map
+			// update the value in the map
 			this.Name = newName
 			this.Server.mapLock.Unlock()
 			this.SendMsg("You renamed to " + this.Name + "\n")
 		}
+	} else if len(msg) > 4 && msg[:3] == "to|" {
+		// msg: "to|Bob|hello"
+		// get msg receiver name
+		parts := strings.Split(msg, "|")
+		if len(parts) < 3 {
+			this.SendMsg("Invalid message format. Use: to|<receiver_name>|<message_content>\n")
+			return
+		}
+		remoteName := parts[1]
+		msgContent := parts[2]
+
+		if remoteName == "" {
+			this.SendMsg("Please input valid receiver name\n")
+			return
+		}
+		// check if the receiver is online
+		remoteUser, ok := this.Server.OnlineMap[remoteName]
+		if !ok {
+			this.SendMsg("the receiver is not online \n")
+			return
+		}
+
+		// get the msg content
+		if msgContent == "" {
+			this.SendMsg("Please input valid content\n")
+			return
+		}
+
+		// send the msg to the receiver
+		remoteUser.SendMsg(this.Name + " sent you a message: " + msgContent + "\n")
+
 	} else {
 		// send message to all users
 		this.Server.Broadcast(this, msg)

@@ -83,7 +83,7 @@ func (this *Server) handler(conn net.Conn) {
 		case <-isLive:
 			// do nothing for enter the second case to active time after
 
-		case <-time.After(time.Second * 10):
+		case <-time.After(time.Second * 60):
 			// clear the user resources
 			user.SendMsg("You are timeout due to inactivity for long time")
 			close(user.C)
