@@ -63,6 +63,27 @@ func (this *Server) handler(conn net.Conn) {
 	// publish this "online" message to all users
 	this.Broadcast(user, "online")
 
+	// listen and read for user message
+	go func() {
+		// read message from user
+		buf := make([]byte, 4096)
+		for {
+			n, err := conn.Read(buf)
+			if n == 0 {
+				this.Broadcast(user, "offline")
+				return
+			}
+			if err != nil && err.Error() != "EOF" {
+				fmt.Println("conn Read err:", err)
+				return
+			}
+			// get message(remove \n)
+			// buf[:n] is a slice of the buffer with length n
+			msg := string(buf[:n-1])
+			// send message to all users
+			this.Broadcast(user, msg)
+		}
+	}()
 	//block this goroutine
 	select {}
 
