@@ -49,7 +49,9 @@ func init() {
 // deal server response
 func (client *Client) DealResponse() {
 	// if client.conn has data, copy to stdout to output
-	io.Copy(os.Stdout, client.conn)
+	if _, err := io.Copy(os.Stdout, client.conn); err != nil {
+		fmt.Println("Error copying data:", err)
+	}
 }
 
 // client menu
@@ -66,6 +68,52 @@ func (client *Client) menu() bool {
 	} else {
 		fmt.Println("please entre a valid number")
 		return false
+	}
+}
+
+func (client *Client) SelectUser() {
+	sendMsg := "who\n"
+	_, err := client.conn.Write([]byte(sendMsg))
+	if err != nil {
+		fmt.Println("conn write err: ", err)
+	}
+}
+
+func (client *Client) PrivateChat() {
+	var remoteName string
+	var chatMsg string
+
+	client.SelectUser()
+	fmt.Println(">>>>enter a user name to chat o exit...")
+
+	fmt.Scanln(&remoteName)
+
+	for remoteName != "exit" {
+
+		fmt.Println("enter content o exit...")
+		fmt.Scanln(&chatMsg)
+
+		for chatMsg != "exit" {
+			if len(chatMsg) != 0 {
+
+				sendMsg := "to|" + remoteName + "|" + chatMsg + "\n\n"
+
+				_, err := client.conn.Write([]byte(sendMsg))
+				if err != nil {
+					fmt.Println("conn write err: ", err)
+					break
+				}
+			}
+			// send more private msg
+			chatMsg = ""
+			fmt.Println("enter content o exit...")
+			fmt.Scanln(&chatMsg)
+		}
+
+		client.SelectUser()
+
+		fmt.Println(">>>>enter a user name to chat o exit...")
+		fmt.Scanln(&remoteName)
 	}
 }
 
@@ -106,28 +154,21 @@ func (client *Client) UpdateName() bool {
 }
 
 func (client *Client) Run() {
-	for {
+	for client.flag != 0 {
 		for client.menu() != true {
 			fmt.Println("please entre a valid number")
 		}
 
 		switch client.flag {
 		case 1:
-			// fmt.Println("group message selected")
 			client.PublicChat()
 			break
 		case 2:
-			fmt.Println("private message selected")
+			client.PrivateChat()
 			break
 		case 3:
-			// fmt.Println("rename selected")
 			client.UpdateName()
 			break
-		case 0:
-			fmt.Println("Exiting...")
-			return
-		default:
-			fmt.Println("Invalid option. Please try again.")
 		}
 	}
 }
