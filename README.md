@@ -49,10 +49,9 @@ Run the server to start listening for client connections:
 2. Start the Client
 Run the client and connect to the server:
 
-Replace <server_ip> with the server's IP address (default: 127.0.0.1).
-Replace <server_port> with the server's port (default: 8888).
-Client Menu
-Once connected, the client displays the following menu:
+- Replace <server_ip> with the server's IP address (default: 127.0.0.1).
+- Replace <server_port> with the server's port (default: 8888).
+- Client Menu, once connected, the client displays the following menu:
 
 1: Send a message to all users in the public chat.
 2: Start a private chat with a specific user.
@@ -61,7 +60,9 @@ Once connected, the client displays the following menu:
 
 3. Example
 - Start the server:
-./server
+  ```bash
+  ./server
 - Start two clients and connect them to the server:
-./client -ip 127.0.0.1 -port 8888
-- se the menu to send public and private messages between the clients.  
+  ```bash
+  ./client -ip 127.0.0.1 -port 8888
+- Use the menu to send public and private messages between the clients.  
